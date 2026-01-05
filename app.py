@@ -22,7 +22,26 @@ PDF_FILES = ["adult-sleep-duration-health-advisory.pdf",
              ]
 
 # OpenAI 클라이언트 초기화
-client = OpenAI()
+import os
+api_key = os.getenv('OPENAI_API_KEY')
+if not api_key:
+    print("[WARNING] OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.")
+    print("[INFO] 환경 변수를 설정하거나 .env 파일을 사용하세요.")
+    client = None
+else:
+    print(f"[INFO] OpenAI API 키 확인됨 (길이: {len(api_key)}자)")
+    print(f"[INFO] API 키 시작 부분: {api_key[:20]}...")
+    
+    # API 키 유효성 간단 테스트
+    try:
+        test_client = OpenAI(api_key=api_key)
+        # 실제 호출은 하지 않고 클라이언트만 생성
+        client = test_client
+        print("[INFO] OpenAI 클라이언트 초기화 완료")
+    except Exception as e:
+        print(f"[ERROR] OpenAI 클라이언트 초기화 실패: {e}")
+        print("[WARNING] API 키가 유효하지 않을 수 있습니다. 환경 변수를 확인해주세요.")
+        client = None
 
 # Flask 앱 초기화
 app = Flask(__name__)
@@ -276,20 +295,51 @@ def cosine_sim(vec_a, vec_b):
 
 # 질문 임베딩 만들고, KB에서 유사도 높은 chunk top_k개 반환
 def retrieve_context(question : str, top_k: int = 3):
-    emb_resp = client.embeddings.create(
-        model = "text-embedding-3-small",
-        input = question,
-    )    
-    q_emb = emb_resp.data[0].embedding
-    
-    scored = []
-    for i in KB:
-        sim = cosine_sim(q_emb, i['embedding'])
-        scored.append((sim,i))
+    try:
+        if not KB or len(KB) == 0:
+            print("[ERROR] 지식베이스가 비어있습니다.")
+            return []
         
-    scored.sort(key = lambda x: x[0], reverse = True) # 유사도 내림차순 정렬
-    top_items = [x[1] for x in scored[:top_k]] # scored 리스트의 요소인 튜플에서 문서(chunk)를 남김. -> 리스트로 반환
-    return top_items
+        try:
+            emb_resp = client.embeddings.create(
+                model = "text-embedding-3-small",
+                input = question,
+            )
+        except Exception as emb_error:
+            error_msg = str(emb_error)
+            print(f"[ERROR] 임베딩 생성 실패: {error_msg}")
+            if "api_key" in error_msg.lower() or "authentication" in error_msg.lower():
+                raise ValueError("OpenAI API 키가 유효하지 않습니다. API 키를 확인해주세요.")
+            elif "rate_limit" in error_msg.lower():
+                raise ValueError("API 사용량 한도에 도달했습니다. 잠시 후 다시 시도해주세요.")
+            else:
+                raise
+        
+        if not emb_resp or not emb_resp.data or len(emb_resp.data) == 0:
+            print("[ERROR] 임베딩 생성 실패: 응답 데이터가 없습니다")
+            return []
+        
+        q_emb = emb_resp.data[0].embedding
+        
+        scored = []
+        for i in KB:
+            if 'embedding' not in i:
+                continue
+            sim = cosine_sim(q_emb, i['embedding'])
+            scored.append((sim, i))
+        
+        if len(scored) == 0:
+            print("[WARNING] 유사한 청크를 찾지 못했습니다.")
+            return []
+        
+        scored.sort(key = lambda x: x[0], reverse = True) # 유사도 내림차순 정렬
+        top_items = [x[1] for x in scored[:top_k]] # scored 리스트의 요소인 튜플에서 문서(chunk)를 남김. -> 리스트로 반환
+        return top_items
+    except Exception as e:
+        print(f"[ERROR] 컨텍스트 검색 중 오류: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
 
 def build_prompt(question: str, contexts: list[str], health_data: dict = None) -> str:
     """
@@ -302,7 +352,8 @@ def build_prompt(question: str, contexts: list[str], health_data: dict = None) -
     health_info = ""
     if health_data:
         health_info = "\n[사용자 건강 기록]\n"
-        health_info += f"- 총 기록 일수: {health_data.get('totalDays', 0)}일\n" # 딕셔너리에서 key가 없는 경우를 위해 0 출력하도록 만듦.        health_info += f"- 최근 7일간 기록: {health_data.get('recentDays', 0)}일\n"
+        health_info += f"- 총 기록 일수: {health_data.get('totalDays', 0)}일\n"  # 딕셔너리에서 key가 없는 경우를 위해 0 출력하도록 만듦
+        health_info += f"- 최근 7일간 기록: {health_data.get('recentDays', 0)}일\n"
         health_info += f"- 평균 수면 시간: {health_data.get('averageSleep', 0)}시간\n"
         health_info += f"- 평균 운동 시간: {health_data.get('averageExercise', 0)}분\n"
         health_info += f"- 평균 스트레스 수준: {health_data.get('averageStress', 0)}/5\n"
@@ -352,8 +403,19 @@ def run_rag_pipeline(question: str, health_data: dict = None) -> str:
     question: 사용자 질문
     health_data: 사용자 건강 기록 요약 (선택사항)
     """
-    #KB에서 관련 문맥 검색
-    top_chunks = retrieve_context(question, top_k=3)
+    try:
+        #KB에서 관련 문맥 검색
+        top_chunks = retrieve_context(question, top_k=3)
+        
+        if not top_chunks or len(top_chunks) == 0:
+            print("[WARNING] 검색된 청크가 없습니다. 기본 답변을 생성합니다.")
+            # 기본 답변 생성
+            return "죄송합니다. 관련 정보를 찾지 못했습니다. 다시 질문해주세요."
+    except Exception as e:
+        print(f"[ERROR] 컨텍스트 검색 실패: {e}")
+        import traceback
+        traceback.print_exc()
+        raise
     
     #컨텍스트용 텍스트 리스트 만들기(출처 포함)
     context_blocks = []
@@ -370,16 +432,41 @@ def run_rag_pipeline(question: str, health_data: dict = None) -> str:
    # 3) 프롬프트 구성 (건강 기록 정보 포함)
     prompt = build_prompt(question, context_blocks, health_data)
 
-# 4) Chat Completions API 호출
-    resp = client.chat.completions.create(
-    model="gpt-4.1-mini",
-    messages=[
-        {"role": "user", "content": prompt}
-    ],
-)
-
-# 5) 응답 텍스트 추출
+    # 4) Chat Completions API 호출
+    if client is None:
+        raise ValueError("OpenAI 클라이언트가 초기화되지 않았습니다. API 키를 확인해주세요.")
+    
+    try:
+        resp = client.chat.completions.create(
+            model="gpt-4o-mini",  # 올바른 모델 이름으로 수정
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+        )
+    except Exception as e:
+        error_msg = str(e)
+        print(f"[ERROR] OpenAI API 호출 실패: {error_msg}")
+        import traceback
+        traceback.print_exc()
+        
+        # 구체적인 에러 메시지 제공
+        if "api_key" in error_msg.lower() or "authentication" in error_msg.lower() or "invalid" in error_msg.lower():
+            raise ValueError("OpenAI API 키가 유효하지 않거나 설정되지 않았습니다. API 키를 확인해주세요.")
+        elif "rate_limit" in error_msg.lower() or "quota" in error_msg.lower():
+            raise ValueError("API 사용량 한도에 도달했습니다. 잠시 후 다시 시도해주세요.")
+        elif "insufficient_quota" in error_msg.lower():
+            raise ValueError("API 크레딧이 부족합니다. OpenAI 계정에서 크레딧을 충전해주세요.")
+        else:
+            raise ValueError(f"OpenAI API 호출 실패: {error_msg}")
+    
+    # 5) 응답 텍스트 추출
+    if not resp or not resp.choices or len(resp.choices) == 0:
+        raise ValueError("OpenAI API에서 응답을 받지 못했습니다.")
+    
     answer = resp.choices[0].message.content
+    if not answer:
+        raise ValueError("응답 내용이 비어있습니다.")
+    
     return answer
             
     
@@ -435,17 +522,33 @@ def api_gpt_question():
     health_data = data.get("healthData", None)
     
     try:
+        print(f"[INFO] 질문 수신: {question[:50]}...")
+        if health_data:
+            print(f"[INFO] 건강 기록 데이터 포함: {health_data.get('totalDays', 0)}일 기록")
+        
         answer = run_rag_pipeline(question, health_data)
+        print(f"[INFO] 답변 생성 완료: {len(answer)}자")
+        
     except Exception as e:
-        print("[ERROR] RAG 처리 중 오류:", e)
+        error_msg = str(e)
+        print(f"[ERROR] RAG 처리 중 오류: {error_msg}")
         import traceback
         traceback.print_exc()
-        return jsonify({"error": "서버에서 답변 생성 중 오류가 발생했습니다."}), 500
+        
+        # 사용자 친화적인 에러 메시지
+        if "API" in error_msg or "OpenAI" in error_msg:
+            user_error = "OpenAI API 연결에 문제가 발생했습니다. API 키를 확인해주세요."
+        elif "KB" in error_msg or "지식베이스" in error_msg:
+            user_error = "지식베이스를 불러오는 중 오류가 발생했습니다."
+        else:
+            user_error = f"답변 생성 중 오류가 발생했습니다: {error_msg[:100]}"
+        
+        return jsonify({"error": user_error}), 500
 
     return jsonify({"answer": answer})
 
 if __name__ == "__main__":
     # 개발용 서버 실행
-    app.run(debug=True)
+    app.run(debug=True, port=8000)
     
 
