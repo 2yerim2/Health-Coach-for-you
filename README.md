@@ -322,6 +322,10 @@ def run_rag_pipeline(question: str, health_data: dict = None) -> str:
     answer = resp.choices[0].message.content
     return answer
 ```
+<img width="1127" height="804" alt="image" src="https://github.com/user-attachments/assets/2a2d30e5-9161-4071-8219-e9f88d32e65b" />
+<img width="1184" height="650" alt="image" src="https://github.com/user-attachments/assets/5581e554-519b-41a3-aa0e-e0961027f743" />
+
+
 
 # 🏥 건강 관리 웹앱 (Health Management Web App)
 
@@ -580,5 +584,6 @@ Document 리스트를 청크로 분할하고 메타데이터 추가
 ---
 
 **면책 조항**: 이 서비스는 의료 진단이 아닌 생활습관 가이드입니다. 건강 문제가 있다면 전문의와 상담하세요.
+
 
 
