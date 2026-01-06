@@ -327,66 +327,6 @@ def run_rag_pipeline(question: str, health_data: dict = None) -> str:
 <img width="1141" height="668" alt="image" src="https://github.com/user-attachments/assets/c3c0a509-dbb5-4696-a0dd-dbff94d5aff0" />
 <img width="1135" height="889" alt="image" src="https://github.com/user-attachments/assets/ac04536a-3393-4532-aed1-7b4f14e54f4d" />
 
-
-
-
-
-# 🏥 건강 관리 웹앱 (Health Management Web App)
-
-RAG(Retrieval-Augmented Generation) 기반 AI 건강 코칭 시스템과 개인 건강 기록 관리 기능을 제공하는 웹 애플리케이션입니다.
-
-## 📋 목차
-
-- [주요 기능](#주요-기능)
-- [기술 스택](#기술-스택)
-- [프로젝트 구조](#프로젝트-구조)
-- [설치 방법](#설치-방법)
-- [사용 방법](#사용-방법)
-- [RAG 파이프라인](#rag-파이프라인)
-- [주의사항](#주의사항)
-
-## ✨ 주요 기능
-
-### 1. 건강 기록 관리
-- **일일 건강 지표 입력**
-  - 수면 시간 (시간 단위)
-  - 운동 시간 (분 단위)
-  - 스트레스 수준 (1-5 척도)
-  - 메모 (자유 입력)
-- **하루 1회 입력 제한**: 중복 기록 방지
-- **데이터 시각화**: Chart.js를 활용한 누적 건강 추이 그래프
-- **로컬 저장**: 브라우저 localStorage 기반 데이터 관리
-
-### 2. RAG 기반 AI 건강 코칭
-- **신뢰할 수 있는 근거 기반 답변**
-  - WHO, CDC 등 공신력 있는 건강 자료 활용
-  - 출처 표시 (문서명, 페이지 번호)
-- **맞춤형 건강 조언**
-  - 사용자 질문에 대한 최적 컨텍스트 검색
-  - 실천 가능한 구체적 행동 제안
-- **안전 기능**
-  - 의료 진단 금지
-  - 생활습관 개선 중심 조언
-  - 면책 문구 자동 포함
-
-## 🛠 기술 스택
-
-### Backend
-- **Flask**: Python 웹 프레임워크
-- **OpenAI API**: GPT-4, Embeddings 모델
-- **LangChain**: 문서 로딩 및 처리
-- **NumPy**: 벡터 연산 및 유사도 계산
-
-### Frontend
-- **HTML/CSS/JavaScript**: 기본 웹 기술
-- **Chart.js**: 데이터 시각화
-- **AJAX (Fetch API)**: 비동기 서버 통신
-
-### 데이터 처리
-- **PyMuPDF**: PDF 문서 파싱
-- **BeautifulSoup**: 웹 크롤링
-- **JSON**: 데이터 저장 형식
-
 ## 📁 프로젝트 구조
 
 ```
@@ -549,34 +489,6 @@ PDF/웹 문서 → 텍스트 추출 → 청킹 (500자, 100자 오버랩)
 - 새로운 건강 가이드라인이 발표되면 지식 베이스를 업데이트해야 합니다
 - `build_rag_knowledge_base()` 함수를 실행하여 재구축하세요
 
-## 🔧 주요 함수 설명
-
-### `load_pdfs(pdf_paths)`
-여러 PDF 파일을 LangChain Document 리스트로 변환
-
-### `chunk_text(text, chunk_size, overlap)`
-긴 텍스트를 지정된 크기로 청킹 (오버랩 포함)
-
-### `build_chunks_from_docs(docs)`
-Document 리스트를 청크로 분할하고 메타데이터 추가
-
-### `embed_chunks(chunks)`
-청크 리스트에 OpenAI 임베딩 생성
-
-### `retrieve_context(question, top_k)`
-질문과 유사한 상위 k개 청크 검색
-
-### `run_rag_pipeline(question)`
-전체 RAG 파이프라인 실행 (검색 → 프롬프트 → 답변)
-
-## 📝 라이선스
-
-이 프로젝트는 교육 목적으로 제작되었습니다.
-
-## 👤 작성자
-
-건강 관리 웹앱 프로젝트
-
 ## 🙏 참고 자료
 
 - [OpenAI API 문서](https://platform.openai.com/docs)
@@ -588,6 +500,7 @@ Document 리스트를 청크로 분할하고 메타데이터 추가
 ---
 
 **면책 조항**: 이 서비스는 의료 진단이 아닌 생활습관 가이드입니다. 건강 문제가 있다면 전문의와 상담하세요.
+
 
 
 
