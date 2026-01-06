@@ -324,6 +324,10 @@ def run_rag_pipeline(question: str, health_data: dict = None) -> str:
 ```
 <img width="1127" height="804" alt="image" src="https://github.com/user-attachments/assets/2a2d30e5-9161-4071-8219-e9f88d32e65b" />
 <img width="1184" height="650" alt="image" src="https://github.com/user-attachments/assets/5581e554-519b-41a3-aa0e-e0961027f743" />
+<img width="1141" height="668" alt="image" src="https://github.com/user-attachments/assets/c3c0a509-dbb5-4696-a0dd-dbff94d5aff0" />
+<img width="1135" height="889" alt="image" src="https://github.com/user-attachments/assets/ac04536a-3393-4532-aed1-7b4f14e54f4d" />
+
+
 
 
 
@@ -584,6 +588,7 @@ Document 리스트를 청크로 분할하고 메타데이터 추가
 ---
 
 **면책 조항**: 이 서비스는 의료 진단이 아닌 생활습관 가이드입니다. 건강 문제가 있다면 전문의와 상담하세요.
+
 
 
 
